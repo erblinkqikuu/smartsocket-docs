@@ -11,19 +11,20 @@ Complete API reference and implementation guide for developers.
 
 1. [Type Definitions](#type-definitions)
 2. [Configuration Options](#configuration-options)
-3. [Error Codes](#error-codes)
-4. [Reconnection Settings](#reconnection-settings)
-5. [Timeout Settings](#timeout-settings)
-6. [Compression Configuration](#compression-configuration)
-7. [Encryption Setup](#encryption-setup)
-8. [Rate Limiting Configuration](#rate-limiting-configuration)
-9. [Connection Pool Configuration](#connection-pool-configuration)
-10. [Debug Logging](#debug-logging)
-11. [Browser Compatibility](#browser-compatibility)
-12. [Performance Tuning](#performance-tuning)
-13. [Security Best Practices](#security-best-practices)
-14. [Memory Usage](#memory-usage)
-15. [Implementation Checklist](#implementation-checklist)
+3. [Broadcasting](#broadcasting)
+4. [Error Codes](#error-codes)
+5. [Reconnection Settings](#reconnection-settings)
+6. [Timeout Settings](#timeout-settings)
+7. [Compression Configuration](#compression-configuration)
+8. [Encryption Setup](#encryption-setup)
+9. [Rate Limiting Configuration](#rate-limiting-configuration)
+10. [Connection Pool Configuration](#connection-pool-configuration)
+11. [Debug Logging](#debug-logging)
+12. [Browser Compatibility](#browser-compatibility)
+13. [Performance Tuning](#performance-tuning)
+14. [Security Best Practices](#security-best-practices)
+15. [Memory Usage](#memory-usage)
+16. [Implementation Checklist](#implementation-checklist)
 
 ---
 
@@ -202,7 +203,204 @@ await client.connect();
 
 ---
 
-## Error Codes
+## Broadcasting
+
+Send messages to multiple clients simultaneously with broadcast methods.
+
+### Broadcasting Methods
+
+#### Global Broadcast (All Clients)
+
+```javascript
+const server = new SmartSocket({ port: 3000 });
+
+// Emit to EVERY connected client globally
+server.emit('system-message', {
+  message: 'Server maintenance in 5 minutes'
+});
+```
+
+#### Namespace Broadcast (All in Namespace)
+
+```javascript
+const quizNS = server.namespace('/quiz');
+
+// Emit to ALL clients in /quiz namespace
+quizNS.emit('new-question', {
+  questionId: 1,
+  text: 'What is 2+2?',
+  options: ['3', '4', '5', '6']
+});
+
+// NOT sent to other namespaces like /chat or /game
+```
+
+#### Unicast (Single Socket)
+
+```javascript
+// Send to ONE specific client
+server.to(socketId).emit('private-message', {
+  message: 'You won the quiz!',
+  prize: 100
+});
+```
+
+### Broadcasting API
+
+```typescript
+interface Namespace {
+  // Broadcast to all in namespace
+  emit(event: string, data: any): void;
+  
+  // Send to specific socket
+  to(socketId: string): {
+    emit(event: string, data: any): void;
+  };
+}
+
+interface SmartSocket {
+  // Broadcast to all globally
+  emit(event: string, data: any): void;
+  
+  // Send to specific socket
+  to(socketId: string): {
+    emit(event: string, data: any): void;
+  };
+}
+```
+
+### Broadcasting in Event Handlers
+
+```javascript
+const quizNS = server.namespace('/quiz');
+
+// When host sends new question
+quizNS.on('next-question', (socket, data, ack) => {
+  // Broadcast to all players
+  quizNS.emit('new-question', {
+    questionId: data.questionId,
+    text: data.text,
+    options: data.options,
+    timeLimit: 30
+  });
+  
+  ack({ broadcasted: true });
+});
+
+// When player joins
+quizNS.on('join', (socket, data, ack) => {
+  socket.data.username = data.username;
+  
+  // Notify all other players
+  quizNS.emit('player-joined', {
+    username: data.username,
+    totalPlayers: getTotalPlayers()
+  });
+  
+  ack({ joined: true });
+});
+```
+
+### Broadcasting with Conditions
+
+```javascript
+const quizNS = server.namespace('/quiz');
+
+quizNS.on('submit-answer', (socket, data, ack) => {
+  // Only send score to this player
+  server.to(socket.id).emit('your-score', {
+    score: calculateScore(data)
+  });
+  
+  // Broadcast leaderboard to all
+  quizNS.emit('leaderboard', getLeaderboard());
+  
+  ack({ processed: true });
+});
+```
+
+### Broadcast Performance
+
+**Broadcast Size Impact:**
+
+```
+Small message (100 bytes):
+  - 100 players: ~10KB total
+  - 1000 players: ~100KB total
+  - Latency: <10ms
+
+Medium message (1KB):
+  - 100 players: ~100KB total
+  - 1000 players: ~1MB total
+  - Latency: 10-20ms (with compression)
+
+Large message (10KB):
+  - 100 players: ~1MB total
+  - 1000 players: ~10MB total
+  - Latency: 50-100ms (with compression enabled)
+```
+
+### Broadcasting Best Practices
+
+```javascript
+// DO: Enable compression for frequent broadcasts
+const server = new SmartSocket({
+  compressionLevel: 6,        // For broadcasts
+  compressionThreshold: 512   // Compress > 512 bytes
+});
+
+// DO: Use small payloads
+quizNS.emit('score-update', {
+  playerId: 'p1',
+  score: 5
+});
+
+// DON'T: Send large objects every time
+quizNS.emit('status', {
+  players: allPlayers,        // Too large!
+  questions: allQuestions,
+  scores: allScores,
+  metadata: fullHistory
+});
+
+// DO: Only broadcast what changed
+quizNS.emit('score-updated', {
+  leaderboard: [
+    { rank: 1, player: 'John', score: 10 },
+    { rank: 2, player: 'Jane', score: 8 }
+  ]
+});
+
+// DO: Rate limit broadcasts
+setInterval(() => {
+  quizNS.emit('metrics', getMetrics());
+}, 1000);  // Once per second, not per event
+
+// DO: Use namespaces to isolate broadcasts
+const gameNS = server.namespace('/game');
+const chatNS = server.namespace('/chat');
+// Game broadcasts won't affect chat players
+```
+
+### Broadcast Latency Optimization
+
+```javascript
+// For low-latency applications
+const server = new SmartSocket({
+  compressionLevel: 1,        // Minimal compression
+  compressionThreshold: 2048, // Only compress large messages
+  enableRateLimiting: false   // If broadcasts from trusted sources
+});
+
+// For high-volume applications
+const server = new SmartSocket({
+  compressionLevel: 9,        // Maximum compression
+  compressionThreshold: 512,  // Compress small messages
+  enableConnectionPooling: true
+});
+```
+
+---
 
 ### Connection Errors
 
