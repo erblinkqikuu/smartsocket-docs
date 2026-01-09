@@ -11,26 +11,11 @@ Central repository for SmartSocket documentation, guides, and resources.
 ## Documentation
 
 ### Getting Started
-- **[Quick Start Guide](./QUICK_START.md)** - 5-minute setup guide
-- **[Installation Guide](./INSTALLATION.md)** - Detailed installation instructions
-- **[00-START-HERE](./00-START-HERE.md)** - Your entry point to SmartSocket
+- **[00-START-HERE](./00-START-HERE.md)** - Your entry point to SmartSocket (5-minute quick start)
 
 ### Core Documentation
 - **[Deployment Guide](./DEPLOYMENT.md)** - Deploy to production (PM2, Docker, Cloud)
-- **[Advanced Features](./SMARTSOCKET_FEATURES.md)** - Namespaces, middleware, encryption, etc.
-- **[API Reference](./API_REFERENCE.md)** - Complete API documentation
-
-### Example Code
-- **[Chat Application](./examples/chat-example.md)** - Real-time chat example
-- **[Data Synchronization](./examples/data-sync-example.md)** - Real-time data sync
-- **[Authentication](./examples/auth-example.md)** - User authentication pattern
-- **[Real-Time Notifications](./examples/notifications-example.md)** - Push notifications
-
-### Best Practices
-- **[Security Best Practices](./SECURITY.md)** - Security hardening guide
-- **[Performance Optimization](./PERFORMANCE.md)** - Optimize for speed
-- **[Monitoring & Debugging](./MONITORING.md)** - Production monitoring
-- **[Troubleshooting Guide](./TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Advanced Features](./SMARTSOCKET_FEATURES.md)** - Namespaces, middleware, encryption, rate limiting, and more
 
 ---
 
@@ -40,16 +25,18 @@ Central repository for SmartSocket documentation, guides, and resources.
 - **[SmartSocket Server](https://github.com/erblinkqikuu/smartsocket)** - WebSocket server library
   - Full-featured server with encryption, rate limiting, compression
   - Production-ready with enterprise features
+  - API Reference: See [smartsocket/README.md](https://github.com/erblinkqikuu/smartsocket)
   
 - **[SmartSocket Client](https://github.com/erblinkqikuu/smartsocket-client)** - WebSocket client library
   - Lightweight (~8KB), zero dependencies
   - Auto-reconnection, compression, acknowledgments
+  - API Reference: See [smartsocket-client/README.md](https://github.com/erblinkqikuu/smartsocket-client)
 
 ### This Repository
 - **[SmartSocket Docs](https://github.com/erblinkqikuu/smartsocket-docs)** - Documentation & Resources
   - Complete documentation
-  - Examples and tutorials
-  - Best practices and guides
+  - Deployment guides
+  - Feature documentation
 
 ---
 
@@ -59,9 +46,9 @@ Central repository for SmartSocket documentation, guides, and resources.
 |----------|---------|
 | [Server Repo](https://github.com/erblinkqikuu/smartsocket) | SmartSocket Server |
 | [Client Repo](https://github.com/erblinkqikuu/smartsocket-client) | SmartSocket Client |
+| [00-START-HERE](./00-START-HERE.md) | Quick start guide |
 | [Deployment Guide](./DEPLOYMENT.md) | Production deployment |
 | [Features Guide](./SMARTSOCKET_FEATURES.md) | Advanced features |
-| [Troubleshooting](./TROUBLESHOOTING.md) | Common issues |
 
 ---
 
@@ -80,10 +67,12 @@ npm install smartsocket-client    # Client
 
 ## Getting Help
 
-1. **Read the docs**: Start with [00-START-HERE](./00-START-HERE.md)
-2. **Check examples**: Look in `./examples/` for working code
-3. **Review troubleshooting**: [TROUBLESHOOTING.md](./TROUBLESHOOTING.md)
-4. **GitHub Issues**: [Report bugs](https://github.com/erblinkqikuu/smartsocket/issues)
+1. **Start here**: [00-START-HERE](./00-START-HERE.md) - 5 minute quick start
+2. **Deployment**: [DEPLOYMENT.md](./DEPLOYMENT.md) - Production setup
+3. **Features**: [SMARTSOCKET_FEATURES.md](./SMARTSOCKET_FEATURES.md) - Advanced capabilities
+4. **Server API**: [smartsocket/README.md](https://github.com/erblinkqikuu/smartsocket)
+5. **Client API**: [smartsocket-client/README.md](https://github.com/erblinkqikuu/smartsocket-client)
+6. **GitHub Issues**: [smartsocket issues](https://github.com/erblinkqikuu/smartsocket/issues)
 
 ---
 
@@ -101,34 +90,28 @@ npm install smartsocket-client    # Client
 ## Project Structure
 
 ```
-smartsocket-docs/         # This repository
-├── README.md              # This file
-├── 00-START-HERE.md       # Quick start
-├── INSTALLATION.md        # Installation guide
-├── DEPLOYMENT.md          # Deployment guide
-├── SMARTSOCKET_FEATURES.md # Advanced features
-├── API_REFERENCE.md       # Complete API reference
-├── SECURITY.md            # Security guide
-├── PERFORMANCE.md         # Performance tuning
-├── MONITORING.md          # Monitoring & debugging
-├── TROUBLESHOOTING.md     # Common issues
-└── examples/              # Code examples
-    ├── chat-example.md
-    ├── data-sync-example.md
-    ├── auth-example.md
-    └── notifications-example.md
+smartsocket-docs/             # This repository
+├── README.md                  # This file
+├── 00-START-HERE.md           # Quick start (5-minute setup)
+├── DEPLOYMENT.md              # Deployment guide
+├── SMARTSOCKET_FEATURES.md    # Advanced features
+├── LICENSE                    # License (no selling/sublicensing)
+└── NOTICE.md                  # Third-party credits (ws library)
+
+Related Repositories:
+├── smartsocket/               # Server implementation
+└── smartsocket-client/        # Client implementation
 ```
 
 ---
 
 ## Documentation Status
 
-✅ Complete documentation  
-✅ Production-ready examples  
-✅ Security best practices  
+✅ Quick start guide  
 ✅ Deployment guides  
-✅ API reference  
-✅ Troubleshooting guide  
+✅ Advanced features documentation  
+✅ Complete LICENSE (no selling/sublicensing)  
+✅ Third-party credits and notices  
 
 ---
 
@@ -143,7 +126,10 @@ Contributions welcome! Please:
 
 ## License
 
-MIT License - See license in respective repositories
+MIT License with Restrictions - See [LICENSE](./LICENSE)
+- ✅ Free to use for personal, educational, organizational purposes
+- ❌ Cannot sell or sublicense
+- ✅ Can modify with attribution
 
 ---
 
@@ -151,8 +137,7 @@ MIT License - See license in respective repositories
 
 - **SmartSocket Server**: [GitHub](https://github.com/erblinkqikuu/smartsocket)
 - **SmartSocket Client**: [GitHub](https://github.com/erblinkqikuu/smartsocket-client)
-- **Documentation**: This repository
-- **Issues**: [Report here](https://github.com/erblinkqikuu/smartsocket/issues)
+- **Issues & Bug Reports**: [smartsocket/issues](https://github.com/erblinkqikuu/smartsocket/issues)
 
 ---
 
