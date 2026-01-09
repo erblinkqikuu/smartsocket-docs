@@ -1,6 +1,6 @@
-# SmartSocket Technical Details
+# SmartSocket Technical Reference
 
-Deep technical documentation for implementers and contributors.
+Complete API reference and implementation guide for developers.
 
 **Version**: 1.0.0  
 **Last Updated**: January 9, 2026
@@ -10,316 +10,194 @@ Deep technical documentation for implementers and contributors.
 ## Table of Contents
 
 1. [Type Definitions](#type-definitions)
-2. [Binary Protocol](#binary-protocol)
-3. [Reconnection Algorithm](#reconnection-algorithm)
-4. [WebSocket Details](#websocket-details)
-5. [Error Codes](#error-codes)
-6. [Heartbeat Mechanism](#heartbeat-mechanism)
-7. [Message Queue](#message-queue)
-8. [Memory Management](#memory-management)
-9. [Timeout Behavior](#timeout-behavior)
+2. [Configuration Options](#configuration-options)
+3. [Error Codes](#error-codes)
+4. [Reconnection Settings](#reconnection-settings)
+5. [Timeout Settings](#timeout-settings)
+6. [Compression Configuration](#compression-configuration)
+7. [Encryption Setup](#encryption-setup)
+8. [Rate Limiting Configuration](#rate-limiting-configuration)
+9. [Connection Pool Configuration](#connection-pool-configuration)
 10. [Debug Logging](#debug-logging)
-11. [Connection Pool Internals](#connection-pool-internals)
-12. [Rate Limiting Algorithm](#rate-limiting-algorithm)
-13. [Compression Details](#compression-details)
-14. [Encryption Key Management](#encryption-key-management)
-15. [Browser Compatibility](#browser-compatibility)
+11. [Browser Compatibility](#browser-compatibility)
+12. [Performance Tuning](#performance-tuning)
+13. [Security Best Practices](#security-best-practices)
+14. [Memory Usage](#memory-usage)
+15. [Implementation Checklist](#implementation-checklist)
 
 ---
 
 ## Type Definitions
 
-### SmartSocket Server
+### Server API
 
 ```typescript
-interface SmartSocketOptions {
-  port: number;                           // Server port (default: 3000)
-  host: string;                           // Bind address (default: 'localhost')
-  enableEncryption: boolean;              // Enable AES-256 encryption (default: true)
-  encryptionKey?: string;                 // 32-byte base64 encryption key
-  encryptionAlgorithm: string;            // Algorithm: 'aes-256-cbc' (default)
-  enableRateLimiting: boolean;            // Enable rate limiting (default: true)
-  rateLimitWindow: number;                // Window in ms (default: 60000)
-  rateLimitMaxRequests: number;           // Max requests per window (default: 100)
-  enableConnectionPooling: boolean;       // Enable pooling (default: true)
-  enableMessageCache: boolean;            // Cache messages (default: false)
-  maxConnections: number;                 // Max clients (default: 10000)
-  connectionTimeout: number;              // Timeout in ms (default: 30000)
-  compressionThreshold: number;           // Compress if > bytes (default: 1024)
-  compressionLevel: number;               // 1-9, 6=default (default: 6)
-}
-
-interface Socket {
-  id: string;                             // Unique socket ID (UUID v4)
-  connected: boolean;                     // Connection status
-  data: Record<string, any>;              // User-defined data storage
-  on(event: string, callback: (...args: any[]) => void): void;
-  once(event: string, callback: (...args: any[]) => void): void;
-  off(event: string): void;
-  emit(event: string, data?: any, ack?: Function): void;
-  disconnect(): void;
-  requireAuth: boolean;
-}
-
-interface SmartSocketServer {
+interface SmartSocket {
+  // Connection Management
   start(): void;
   stop(): void;
+  
+  // Namespaces
   namespace(path: string): Namespace;
+  
+  // Events
   on(event: string, callback: (socket: Socket, ...args: any[]) => void): void;
   emit(event: string, data: any): void;
   to(socketId: string): { emit: (event: string, data: any) => void };
+  
+  // Statistics
   getStats(): ServerStats;
   getConnectionStats(): ConnectionStats;
   getNamespaceStats(): Record<string, NamespaceStats>;
-  use(middleware: MiddlewareFunction): void;
+  
+  // Middleware
+  use(middleware: (socket: Socket, event: string, data: any, next: Function) => void): void;
+  
+  // Rate Limiting
   setEventRateLimit(event: string, config: RateLimitConfig): void;
+}
+
+interface Socket {
+  id: string;
+  connected: boolean;
+  data: Record<string, any>;
+  
+  on(event: string, callback: (data?: any, ack?: Function) => void): void;
+  once(event: string, callback: (data?: any, ack?: Function) => void): void;
+  off(event: string): void;
+  emit(event: string, data?: any): void;
+  disconnect(): void;
 }
 
 interface ServerStats {
   connections: number;
-  memoryUsage: string;                    // e.g., "45MB"
-  uptime: number;                         // milliseconds
-  messagesPerSecond: number;
-  averageLatency: number;                 // milliseconds
-}
-
-interface NamespaceStats {
-  connections: number;
   memoryUsage: string;
-  events: Record<string, number>;         // Event counts
+  uptime: number;
+  messagesPerSecond: number;
+  averageLatency: number;
 }
 
 interface RateLimitConfig {
-  window: number;                         // Time window in ms
-  maxRequests: number;                    // Max requests in window
+  window: number;
+  maxRequests: number;
+}
+
+interface Namespace {
+  on(event: string, callback: (socket: Socket, data?: any, ack?: Function) => void): void;
+  emit(event: string, data: any): void;
+  to(socketId: string): { emit: (event: string, data: any) => void };
+  use(middleware: Function): void;
 }
 ```
 
-### SmartSocket Client
+### Client API
 
 ```typescript
-interface SmartSocketClientOptions {
-  namespace: string;                      // Namespace path (default: '/')
-  enableNamespaces: boolean;              // Support namespaces (default: true)
-  enableAcknowledgments: boolean;         // Support acks (default: true)
-  enableErrorHandling: boolean;           // Error handling (default: true)
-  enableEncryption: boolean;              // Enable encryption (default: false)
-  encryptionKey?: string;                 // 32-byte base64 encryption key
-  apiKey?: string;                        // Optional API key for auth
-  reconnectDelay: number;                 // Initial delay ms (default: 1000)
-  maxReconnectAttempts: number;           // Max attempts (default: 10)
-  ackTimeout: number;                     // Timeout ms (default: 30000)
-}
-
 interface SmartSocketClient {
+  // Connection
   connect(): Promise<void>;
   disconnect(): void;
   connected: boolean;
+  
+  // Data Storage
   data: Record<string, any>;
+  
+  // Events
   on(event: string, callback: (...args: any[]) => void): void;
   once(event: string, callback: (...args: any[]) => void): void;
   off(event: string): void;
   emit(event: string, data?: any, ack?: (response: any) => void): void;
 }
-
-interface AcknowledgmentCallback {
-  (response: {
-    success?: boolean;
-    error?: string;
-    code?: string;
-    [key: string]: any;
-  }): void;
-}
 ```
 
 ---
 
-## Binary Protocol
+## Configuration Options
 
-### Message Format
+### Server Options
 
-```
-[FRAME HEADER] [MESSAGE TYPE] [NAMESPACE] [EVENT] [DATA] [ACK_ID]
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `port` | number | 3000 | Port to listen on |
+| `host` | string | 'localhost' | Host to bind to (use '0.0.0.0' for production) |
+| `enableEncryption` | boolean | true | Enable AES-256 encryption |
+| `encryptionKey` | string | - | 32-byte base64 encryption key (required if encryption enabled) |
+| `encryptionAlgorithm` | string | 'aes-256-cbc' | Encryption algorithm |
+| `enableRateLimiting` | boolean | true | Enable rate limiting protection |
+| `rateLimitWindow` | number | 60000 | Rate limit time window (ms) |
+| `rateLimitMaxRequests` | number | 100 | Max requests per window per client |
+| `enableConnectionPooling` | boolean | true | Enable connection pool optimization |
+| `enableMessageCache` | boolean | false | Cache messages for offline clients |
+| `maxConnections` | number | 10000 | Maximum simultaneous connections |
+| `connectionTimeout` | number | 30000 | Connection idle timeout (ms) |
+| `compressionThreshold` | number | 1024 | Compress messages larger than this (bytes) |
+| `compressionLevel` | number | 6 | Compression level (1-9) |
 
-Frame Structure (Binary):
-├─ Version Byte (1 byte): 0x01
-├─ Type Byte (1 byte): Message type (0x01-0x07)
-├─ Flags Byte (1 byte): Compression, encryption, acknowledgment
-├─ Namespace Length (2 bytes): Big-endian uint16
-├─ Namespace (variable): UTF-8 string
-├─ Event Length (2 bytes): Big-endian uint16
-├─ Event (variable): UTF-8 string
-├─ ACK ID (4 bytes, optional): Big-endian uint32
-├─ Data Length (4 bytes): Big-endian uint32
-└─ Data (variable): Binary or compressed JSON
-```
+### Client Options
 
-### Message Types
-
-```
-0x01 = CONNECT
-0x02 = DISCONNECT
-0x03 = EVENT
-0x04 = ACKNOWLEDGMENT
-0x05 = ERROR
-0x06 = HEARTBEAT
-0x07 = HEARTBEAT_ACK
-```
-
-### Flags Byte Structure
-
-```
-Bit 7: Compression flag (1 = compressed)
-Bit 6: Encryption flag (1 = encrypted)
-Bit 5: Acknowledgment requested (1 = ack required)
-Bit 4: Binary data (1 = binary, 0 = JSON)
-Bits 0-3: Reserved
-```
-
-### Example Message
-
-```
-Raw bytes for event: { type: 'chat', text: 'Hello' }
-
-[01] [03] [00] [00 01] [/chat] [00 04] [chat] [00 00 00 2F] [{"type":"chat","text":"Hello"}]
-│    │    │    │      │       │      │      │              │
-│    │    │    │      │       │      │      │              └─ Data (47 bytes)
-│    │    │    │      │       │      │      └─ Event: "chat"
-│    │    │    │      │       │      └─ Event length: 4
-│    │    │    │      │       └─ Namespace: "/chat"
-│    │    │    │      └─ Namespace length: 1
-│    │    │    └─ Flags: 0x00 (no compression, no encryption)
-│    │    └─ Type: EVENT
-│    └─ Version: 1
-└─ Frame start
-```
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `namespace` | string | '/' | Namespace to connect to |
+| `enableNamespaces` | boolean | true | Support multiple namespaces |
+| `enableAcknowledgments` | boolean | true | Enable acknowledgment callbacks |
+| `enableErrorHandling` | boolean | true | Enable error event handling |
+| `enableEncryption` | boolean | false | Enable encryption (match server setting) |
+| `encryptionKey` | string | - | Must match server encryption key |
+| `apiKey` | string | - | Optional API key for authentication |
+| `reconnectDelay` | number | 1000 | Initial reconnection delay (ms) |
+| `maxReconnectAttempts` | number | 10 | Maximum reconnection attempts |
+| `ackTimeout` | number | 30000 | Acknowledgment timeout (ms) |
 
 ---
 
-## Reconnection Algorithm
+## Configuration Examples
 
-### Exponential Backoff Formula
-
-```
-delay(attempt) = reconnectDelay * (1.5 ^ attempt)
-
-Where:
-  - reconnectDelay = initial delay (default: 1000ms)
-  - attempt = reconnection attempt number (0-indexed)
-  - Maximum delay: capped at 60000ms (1 minute)
-  - Maximum attempts: maxReconnectAttempts (default: 10)
-```
-
-### Example Timeline (Default Settings)
-
-```
-Attempt 0: 1000ms (1 second)
-Attempt 1: 1500ms (1.5 seconds)
-Attempt 2: 2250ms (2.25 seconds)
-Attempt 3: 3375ms (3.375 seconds)
-Attempt 4: 5062ms (5 seconds)
-Attempt 5: 7593ms (7.6 seconds)
-Attempt 6: 11390ms (11.4 seconds)
-Attempt 7: 17085ms (17 seconds)
-Attempt 8: 25627ms (25.6 seconds)
-Attempt 9: 38440ms (38.4 seconds)
-Attempt 10: 57661ms → capped at 60000ms
-```
-
-### Reconnection Logic
+### Basic Server
 
 ```javascript
-reconnect(attempt = 0) {
-  if (attempt >= this.maxReconnectAttempts) {
-    this.emit('max-reconnect-attempts-reached');
-    return;
-  }
-
-  const delay = Math.min(
-    this.reconnectDelay * Math.pow(1.5, attempt),
-    60000  // Cap at 60 seconds
-  );
-
-  console.log(`Reconnecting in ${delay}ms (attempt ${attempt + 1})`);
-
-  setTimeout(() => {
-    this.connect()
-      .then(() => {
-        this.reconnectAttempt = 0;  // Reset on success
-        this.emit('reconnected');
-      })
-      .catch(() => {
-        this.reconnect(attempt + 1);
-      });
-  }, delay);
-}
-```
-
----
-
-## WebSocket Details
-
-### Protocol Version
-
-```
-WebSocket Protocol: RFC 6455 (IETF Standard)
-Handshake Version: 13
-Subprotocol: "smartsocket-v1"
-```
-
-### Secure Connection (WSS)
-
-```javascript
-// Client example for WSS
-const client = new SmartSocketClient('wss://your-domain.com:3000', {
-  // wss = WebSocket Secure (TLS/SSL encrypted)
-});
-
-// Server example with WSS
-const fs = require('fs');
-const https = require('https');
 const SmartSocket = require('smartsocket');
 
-const options = {
-  key: fs.readFileSync('server.key'),
-  cert: fs.readFileSync('server.crt')
-};
-
-const httpsServer = https.createServer(options);
 const server = new SmartSocket({
   port: 3000,
-  server: httpsServer  // Attach to HTTPS server
+  host: '0.0.0.0'
 });
+
+server.start();
+console.log('Server running on port 3000');
 ```
 
-### Connection Lifecycle
+### Production Server
 
+```javascript
+const server = new SmartSocket({
+  port: process.env.PORT || 3000,
+  host: '0.0.0.0',
+  enableEncryption: true,
+  encryptionKey: process.env.ENCRYPTION_KEY,
+  enableRateLimiting: true,
+  rateLimitMaxRequests: 1000,
+  maxConnections: 50000,
+  compressionLevel: 9,
+  connectionTimeout: 60000
+});
+
+server.start();
 ```
-CLIENT                          SERVER
-  │                               │
-  ├── TCP Connection Setup ──────>│
-  │                               │
-  ├── WebSocket Handshake ──────>│
-  │                           │ Verify request
-  │                           │ Send handshake response
-  │<─ Handshake Response ──────┤
-  │                               │
-  ├── SmartSocket CONNECT ──────>│
-  │                           │ Validate encryption key
-  │                           │ Create socket object
-  │<─ Connection ACK ──────────┤
-  │                               │
-  ├─ (bidirectional communication)
-  │<──────────────────────────── [events can flow both ways]
-  │──────────────────────────>│
-  │                               │
-  ├── DISCONNECT ────────────────>│
-  │                               │
-  ├── Close Frame ────────────────>│
-  │                           │ Clean up socket
-  │<─ Close Frame ────────────┤
-  │                               │
-  └─ TCP Connection Close ──────>│
+
+### Client Configuration
+
+```javascript
+const client = new SmartSocketClient('ws://localhost:3000', {
+  namespace: '/chat',
+  enableEncryption: true,
+  encryptionKey: process.env.ENCRYPTION_KEY,
+  apiKey: 'your-api-key',
+  reconnectDelay: 2000,
+  maxReconnectAttempts: 15,
+  ackTimeout: 60000
+});
+
+await client.connect();
 ```
 
 ---
@@ -330,52 +208,52 @@ CLIENT                          SERVER
 
 ```
 ERR_CONN_001: Connection refused
-  Cause: Server not listening
-  Action: Verify server is running, check host/port
+  Cause: Server not listening or unreachable
+  Solution: Verify server is running, check host/port
 
 ERR_CONN_002: Connection timeout
-  Cause: No response from server
-  Action: Check network, verify server is responding
+  Cause: Server not responding within timeout
+  Solution: Check network connectivity, increase connectionTimeout
 
 ERR_CONN_003: Handshake failed
-  Cause: Invalid WebSocket handshake
-  Action: Verify server version compatibility
+  Cause: WebSocket handshake error
+  Solution: Verify server is WebSocket-compatible
 
 ERR_CONN_004: Authentication failed
-  Cause: Invalid encryption key or API key
-  Action: Verify encryption keys match on both sides
+  Cause: Encryption key mismatch or invalid API key
+  Solution: Verify encryptionKey matches on client and server
 
 ERR_CONN_005: Max connections exceeded
   Cause: Server at maxConnections limit
-  Action: Increase server maxConnections or close unused connections
+  Solution: Increase maxConnections or disconnect unused clients
 
 ERR_CONN_006: Connection lost
-  Cause: Network interruption
-  Action: Client will auto-reconnect with exponential backoff
+  Cause: Network interruption or server disconnect
+  Solution: Client will auto-reconnect with exponential backoff
 ```
 
 ### Message Errors
 
 ```
 ERR_MSG_001: Invalid message format
-  Cause: Malformed binary protocol
-  Action: Verify message structure, check compatibility
+  Cause: Malformed message structure
+  Solution: Check message format, update SmartSocket version
 
 ERR_MSG_002: Decompression failed
-  Cause: Invalid compressed data
-  Action: Check compression settings
+  Cause: Corrupted compressed data
+  Solution: Check compressionLevel, retry message
 
 ERR_MSG_003: Decryption failed
   Cause: Wrong encryption key or corrupted data
-  Action: Verify encryption keys match
+  Solution: Verify encryptionKey matches exactly on both sides
 
 ERR_MSG_004: Message too large
-  Cause: Data exceeds maximum size (~16MB)
-  Action: Split message or enable compression
+  Cause: Data exceeds maximum size
+  Solution: Split message into smaller chunks or enable compression
 
 ERR_MSG_005: Invalid namespace
-  Cause: Namespace doesn't exist
-  Action: Verify namespace path format
+  Cause: Namespace doesn't exist on server
+  Solution: Verify namespace path, create namespace on server
 ```
 
 ### Rate Limiting Errors
@@ -383,11 +261,11 @@ ERR_MSG_005: Invalid namespace
 ```
 ERR_RATE_001: Rate limit exceeded
   Cause: Too many requests in time window
-  Action: Wait for window to reset or increase limit
+  Solution: Wait for window to reset or adjust rate limit settings
 
 ERR_RATE_002: Event rate limit exceeded
   Cause: Specific event rate limit triggered
-  Action: Wait before sending same event again
+  Solution: Reduce frequency of specific events
 ```
 
 ### Acknowledgment Errors
@@ -395,200 +273,306 @@ ERR_RATE_002: Event rate limit exceeded
 ```
 ERR_ACK_001: Acknowledgment timeout
   Cause: Server didn't respond within ackTimeout
-  Action: Increase ackTimeout or check server processing
+  Solution: Increase ackTimeout or optimize server processing
 
-ERR_ACK_002: Invalid acknowledgment format
-  Cause: Malformed ack response
-  Action: Verify ack callback response format
+ERR_ACK_002: Invalid acknowledgment response
+  Cause: Malformed ack callback response
+  Solution: Ensure callback returns valid response object
 
-ERR_ACK_003: Acknowledgment for unknown message
-  Cause: Ack ID doesn't match sent message
-  Action: Internal error - report to maintainers
+ERR_ACK_003: Message not found
+  Cause: Ack ID doesn't match any sent message
+  Solution: Retry the message or check for duplicate sends
 ```
 
 ---
 
-## Heartbeat Mechanism
+## Reconnection Settings
 
-### Heartbeat Protocol
+### Understanding Reconnection
 
-```
-Client sends HEARTBEAT every 30 seconds
-
-Server responds with HEARTBEAT_ACK within 5 seconds
-
-If no HEARTBEAT_ACK received:
-  ├─ Retry 3 times with 2 second intervals
-  ├─ If still no response: Connection dead
-  └─ Client initiates reconnection
-```
-
-### Implementation
+When client loses connection, it automatically reconnects with exponential backoff:
 
 ```javascript
-// Client side
-startHeartbeat() {
-  this.heartbeatInterval = setInterval(() => {
-    this.send({
-      type: MESSAGE_TYPE.HEARTBEAT,
-      timestamp: Date.now()
-    });
+const client = new SmartSocketClient('ws://localhost:3000', {
+  reconnectDelay: 1000,           // Start with 1 second
+  maxReconnectAttempts: 10        // Try up to 10 times
+});
 
-    // Set timeout for heartbeat response
-    this.heartbeatTimeout = setTimeout(() => {
-      this.heartbeatMissed++;
-      
-      if (this.heartbeatMissed >= 3) {
-        console.warn('Heartbeat failed, reconnecting...');
-        this.disconnect();
-        this.connect();
-      }
-    }, 5000);  // 5 second timeout
-  }, 30000);   // Every 30 seconds
-}
-
-// Server side
-handleHeartbeat(socket) {
-  socket.send({
-    type: MESSAGE_TYPE.HEARTBEAT_ACK,
-    timestamp: Date.now()
-  });
-}
+// Timeline:
+// Attempt 0: wait 1s
+// Attempt 1: wait 1.5s
+// Attempt 2: wait 2.25s
+// Attempt 3: wait 3.4s
+// ... etc (exponential backoff)
 ```
 
----
-
-## Message Queue
-
-### Queue Behavior During Reconnection
+### Listening to Reconnection Events
 
 ```javascript
-// When client disconnects, queued messages stored
-class MessageQueue {
-  constructor(maxSize = 1000) {
-    this.queue = [];
-    this.maxSize = maxSize;
-  }
-
-  enqueue(message) {
-    if (this.queue.length >= this.maxSize) {
-      // Remove oldest message
-      this.queue.shift();
-    }
-    this.queue.push({
-      message,
-      timestamp: Date.now()
-    });
-  }
-
-  flush(socket) {
-    while (this.queue.length > 0) {
-      const { message } = this.queue.shift();
-      socket.send(message);
-    }
-  }
-}
-
-// Usage during reconnection
 client.on('connected', () => {
-  this.messageQueue.flush(this.socket);
+  console.log('Connected!');
 });
-```
 
-### Queue Limits
-
-```
-Maximum queue size: 1000 messages
-Maximum message age: 5 minutes
-If queue full: Oldest messages discarded
-If reconnection fails: Queue cleared after 10 minutes
-```
-
----
-
-## Memory Management
-
-### Memory Per Connection
-
-```
-Base socket object: ~1.5 KB
-Event listeners (avg 5): ~500 bytes
-Data object: ~2-5 KB
-Buffers and state: ~1 KB
-
-Total per connection: ~5-7 KB (without user data)
-```
-
-### Memory Optimization
-
-```javascript
-// Proper cleanup
-client.off('event-name');  // Remove listener
-client.disconnect();       // Disconnect and cleanup
-client = null;             // Garbage collection
-
-// Avoid memory leaks
-socket.on('message', (data) => {
-  // DON'T create closures with large objects
-  largeData = data;  // BAD - prevents GC
-  
-  // DO process and discard
-  process(data);     // GOOD - allows GC
+client.on('disconnected', () => {
+  console.log('Disconnected, will reconnect...');
 });
-```
 
-### Server Memory Monitoring
+client.on('error', (error) => {
+  console.error('Connection error:', error);
+});
 
-```javascript
-// Monitor memory usage
-setInterval(() => {
-  const stats = server.getStats();
-  const memMB = parseFloat(stats.memoryUsage);
-  
-  if (memMB > 500) {  // Alert if > 500MB
-    console.warn('High memory usage:', memMB + 'MB');
-    console.log('Connections:', stats.connections);
+// Custom: track reconnection attempts
+let attempts = 0;
+const originalConnect = client.connect.bind(client);
+client.connect = async function() {
+  try {
+    await originalConnect();
+    attempts = 0;
+  } catch(err) {
+    attempts++;
+    if (attempts >= this.maxReconnectAttempts) {
+      console.error('Max reconnection attempts reached');
+    }
+    throw err;
   }
-}, 60000);  // Every 60 seconds
+};
 ```
 
 ---
 
-## Timeout Behavior
+## Timeout Settings
 
 ### Acknowledgment Timeout
 
 ```javascript
+// Client waits up to 30 seconds for server to respond
 const client = new SmartSocketClient('ws://localhost:3000', {
-  ackTimeout: 30000  // 30 seconds
+  ackTimeout: 30000  // 30 seconds in milliseconds
 });
 
-client.emit('save-data', { data: 'value' }, (ack) => {
-  // This callback is called when server responds
-  // OR after 30 seconds (whichever comes first)
+client.emit('save-data', { name: 'John' }, (ack) => {
+  if (ack) {
+    console.log('Server responded:', ack);
+  } else {
+    console.error('Server did not respond in time');
+  }
 });
 
-// Timeout flow:
-// 1. Message sent with unique ACK_ID
-// 2. Timer started for ackTimeout duration
-// 3. Server responds with same ACK_ID → Cancel timer, call callback
-// 4. Timer expires → Call callback with timeout error
-//    callback({ error: 'Acknowledgment timeout', code: 'ERR_ACK_001' })
+// Adjust for slow operations:
+const client = new SmartSocketClient('ws://localhost:3000', {
+  ackTimeout: 120000  // 2 minutes for long operations
+});
 ```
 
 ### Connection Timeout
 
 ```javascript
+// Server drops connections idle for more than 30 seconds
 const server = new SmartSocket({
   connectionTimeout: 30000  // 30 seconds
 });
 
-// Flow:
-// 1. Connection established
-// 2. If no activity for 30 seconds
-// 3. Server sends HEARTBEAT
-// 4. If no HEARTBEAT_ACK within 5 seconds
-// 5. Connection dropped and socket cleaned up
+// Adjust for slow networks:
+const server = new SmartSocket({
+  connectionTimeout: 60000  // 1 minute for slow networks
+});
+```
+
+---
+
+## Compression Configuration
+
+### Compression Settings
+
+```javascript
+// Server
+const server = new SmartSocket({
+  compressionThreshold: 1024,   // Compress messages > 1KB
+  compressionLevel: 6           // 1-9, default 6
+});
+
+// Compression levels:
+// 1 = Fastest (minimal reduction)
+// 6 = Default (balanced)
+// 9 = Best compression (slowest)
+```
+
+### Compression Ratios
+
+```
+Level 1: ~10% reduction, <1ms overhead
+Level 6: ~60% reduction, 2-3ms overhead
+Level 9: ~75% reduction, 5-10ms overhead
+
+For 5KB message:
+  - Uncompressed: 5000 bytes
+  - Level 6: ~2000 bytes (60% reduction)
+  - Level 9: ~1250 bytes (75% reduction)
+```
+
+### Using Compression
+
+```javascript
+// Compression is automatic and transparent
+// No code changes needed - just enable it
+
+const server = new SmartSocket({
+  compressionLevel: 9,
+  compressionThreshold: 512  // Compress > 512 bytes
+});
+
+// Client doesn't need special config
+const client = new SmartSocketClient('ws://localhost:3000');
+// Decompression happens automatically
+```
+
+---
+
+## Encryption Setup
+
+### Generate Encryption Key
+
+```bash
+# Generate 32-byte (256-bit) key in base64
+openssl rand -base64 32
+
+# Output example:
+# k3mZ7x9pQ2vL8nR5tY1hJ4bF6wS0dA2eK9mX7cP3vN=
+```
+
+### Server with Encryption
+
+```javascript
+const server = new SmartSocket({
+  enableEncryption: true,
+  encryptionKey: process.env.ENCRYPTION_KEY,  // Set via env var
+  encryptionAlgorithm: 'aes-256-cbc'
+});
+```
+
+### Client with Encryption
+
+```javascript
+const client = new SmartSocketClient('ws://localhost:3000', {
+  enableEncryption: true,
+  encryptionKey: process.env.ENCRYPTION_KEY   // MUST match server
+});
+
+await client.connect();
+```
+
+### Key Management Best Practices
+
+```javascript
+// DO: Use environment variables
+const key = process.env.ENCRYPTION_KEY;
+
+// DO: Use secure vaults (AWS Secrets Manager, HashiCorp Vault, etc.)
+
+// DON'T: Hardcode keys in source code
+// const key = 'k3mZ7x9pQ2vL8nR5tY1hJ4bF6wS0dA2eK9mX7cP3vN=';
+
+// DON'T: Commit .env files to git
+// Add to .gitignore: .env, .env.local, etc.
+
+// DO: Rotate keys every 90 days
+// Generate new key and restart servers
+```
+
+---
+
+## Rate Limiting Configuration
+
+### Basic Rate Limiting
+
+```javascript
+const server = new SmartSocket({
+  enableRateLimiting: true,
+  rateLimitWindow: 60000,        // 1 minute window
+  rateLimitMaxRequests: 100      // Max 100 requests per minute
+});
+```
+
+### Per-Event Rate Limiting
+
+```javascript
+const server = new SmartSocket({
+  enableRateLimiting: true
+});
+
+// Stricter limit for specific events
+server.setEventRateLimit('message', {
+  window: 5000,      // 5 second window
+  maxRequests: 5     // Max 5 messages per 5 seconds
+});
+
+server.setEventRateLimit('delete', {
+  window: 60000,     // 1 minute
+  maxRequests: 1     // Only 1 delete per minute
+});
+```
+
+### Handling Rate Limits
+
+```javascript
+// Server side
+server.on('rate-limit', (socket) => {
+  socket.emit('__rate-limited__', {
+    message: 'Too many requests, please slow down',
+    retryAfter: 5000  // Retry after 5 seconds
+  });
+});
+
+// Client side
+client.on('__rate-limited__', (info) => {
+  console.warn('Rate limited:', info.message);
+  setTimeout(() => {
+    // Retry the operation
+  }, info.retryAfter);
+});
+```
+
+### Rate Limiting Examples
+
+```
+Scenario 1: Chat application
+- rateLimitWindow: 5000 (5 seconds)
+- rateLimitMaxRequests: 5 (max 5 messages per 5 seconds)
+
+Scenario 2: API-heavy application
+- rateLimitWindow: 60000 (1 minute)
+- rateLimitMaxRequests: 1000 (max 1000 requests per minute)
+
+Scenario 3: Real-time game
+- rateLimitWindow: 1000 (1 second)
+- rateLimitMaxRequests: 10 (max 10 actions per second)
+```
+
+---
+
+## Connection Pool Configuration
+
+### Pool Settings
+
+```javascript
+const server = new SmartSocket({
+  enableConnectionPooling: true,
+  maxConnections: 10000
+});
+
+// The pool optimizes memory usage and connection setup
+// No additional configuration needed for basic use
+```
+
+### Monitoring Pool Usage
+
+```javascript
+// Check statistics regularly
+setInterval(() => {
+  const stats = server.getStats();
+  console.log('Connections:', stats.connections);
+  console.log('Memory usage:', stats.memoryUsage);
+}, 60000);  // Every minute
 ```
 
 ---
@@ -602,254 +586,27 @@ const server = new SmartSocket({
 process.env.DEBUG = 'smartsocket:*';
 
 // Or in code
-const logger = require('smartsocket-client/logger.js');
+const logger = require('smartsocket-client/logger');
 logger.setLevel('debug');
 
-// Logging levels
+// Logging levels:
 logger.setLevel('error');    // Only errors
-logger.setLevel('warn');     // Warnings and errors
+logger.setLevel('warn');     // Warnings + errors
 logger.setLevel('info');     // Normal operations
 logger.setLevel('debug');    // Detailed debugging
 logger.setLevel('trace');    // Very detailed
 ```
 
-### Log Output
+### Expected Log Output
 
 ```
-[smartsocket] [debug] Connecting to ws://localhost:3000
-[smartsocket] [debug] WebSocket opened
+[smartsocket] [info] Connecting to ws://localhost:3000
+[smartsocket] [debug] WebSocket connection opened
 [smartsocket] [debug] Sending CONNECT message
 [smartsocket] [debug] Received CONNECT_ACK
+[smartsocket] [info] Connected to server
 [smartsocket] [debug] Emitting event: message { text: 'Hello' }
-[smartsocket] [debug] Sent 125 bytes (compressed to 89 bytes)
-[smartsocket] [debug] Heartbeat sent (id: 1234)
-```
-
----
-
-## Connection Pool Internals
-
-### Pool Architecture
-
-```
-Pool Manager
-├─ Available Pool [500 connections]
-├─ In-Use Pool [450 connections]
-└─ Reserve Pool [100 connections]
-
-Total: 1000 connections (maxPoolSize)
-Initial: 500 connections (poolSize)
-Growth: 50% increase when needed (poolGrowthRate)
-```
-
-### Pool Operations
-
-```javascript
-// Acquire connection from pool
-acquireConnection() {
-  if (this.available.length > 0) {
-    return this.available.pop();  // O(1) operation
-  }
-  
-  if (this.inUse.length < this.maxPoolSize) {
-    return this.createNewConnection();
-  }
-  
-  // Pool exhausted
-  throw new Error('ERR_CONN_005: Max connections exceeded');
-}
-
-// Release connection back to pool
-releaseConnection(conn) {
-  if (this.available.length < this.poolSize) {
-    this.available.push(conn);  // Return to available
-  } else {
-    conn.close();               // Destroy excess
-  }
-}
-
-// Growth when needed
-growPool() {
-  const growth = Math.floor(this.poolSize * this.poolGrowthRate);
-  for (let i = 0; i < growth; i++) {
-    this.available.push(this.createNewConnection());
-  }
-}
-```
-
----
-
-## Rate Limiting Algorithm
-
-### Sliding Window Counter Algorithm
-
-```
-Time:    0ms    1000ms   2000ms   3000ms   4000ms
-         │      │        │        │        │
-Request: [1]    [2]      [3]      [4]      [5]
-Counter: 1      2        3        2        1
-
-Window = 3000ms (past 3 seconds)
-
-At 4000ms: Only requests from 1000ms onward count (requests 2, 3, 4)
-           Requests 1 (0ms) is outside window and not counted
-```
-
-### Implementation
-
-```javascript
-class RateLimiter {
-  constructor(window, maxRequests) {
-    this.window = window;
-    this.maxRequests = maxRequests;
-    this.requests = [];  // Timestamps
-  }
-
-  isAllowed() {
-    const now = Date.now();
-    
-    // Remove old requests outside window
-    this.requests = this.requests.filter(
-      ts => now - ts < this.window
-    );
-    
-    // Check limit
-    if (this.requests.length >= this.maxRequests) {
-      return false;
-    }
-    
-    // Add new request
-    this.requests.push(now);
-    return true;
-  }
-
-  reset() {
-    this.requests = [];
-  }
-}
-```
-
-### Per-Client Limiting
-
-```javascript
-server.use((socket, event, data, next) => {
-  const limiter = socket.rateLimiter || 
-    (socket.rateLimiter = new RateLimiter(60000, 100));
-  
-  if (!limiter.isAllowed()) {
-    return next(new Error('Rate limit exceeded'));
-  }
-  
-  next();
-});
-```
-
----
-
-## Compression Details
-
-### DEFLATE Settings
-
-```
-Algorithm: DEFLATE (RFC 1951)
-Level: 1-9 (6 is default)
-  1 = Fastest, worst compression
-  6 = Balance (default)
-  9 = Slowest, best compression
-
-Threshold: Only compress if message > threshold bytes
-Default: 1024 bytes
-```
-
-### Compression Performance
-
-```
-Level 1: 10% reduction, <1ms overhead
-Level 6: 60% reduction, 2-3ms overhead
-Level 9: 70% reduction, 5-10ms overhead
-```
-
-### Compression Example
-
-```javascript
-// Server config
-const server = new SmartSocket({
-  compressionThreshold: 512,  // Compress > 512 bytes
-  compressionLevel: 6
-});
-
-// For message of 5000 bytes:
-// Original size: 5000 bytes
-// Compressed size: 1500 bytes (30% of original)
-// Overhead: 2ms compression + 1ms decompression
-// Bandwidth saved: 3500 bytes (70%)
-// Net benefit: 3498 bytes saved vs 3ms latency
-```
-
----
-
-## Encryption Key Management
-
-### Key Generation
-
-```bash
-# Generate 32-byte (256-bit) key in base64
-openssl rand -base64 32
-
-# Output example:
-# k3mZ7x9pQ2vL8nR5tY1hJ4bF6wS0dA2eK9mX7cP3vN=
-```
-
-### Key Storage
-
-```javascript
-// DO: Store in environment variable
-const encryptionKey = process.env.ENCRYPTION_KEY;
-
-// DO: Store in secure vault
-// Using AWS Secrets Manager, HashiCorp Vault, etc.
-
-// DON'T: Hardcode in source
-// const key = 'k3mZ7x9pQ2vL8nR5tY1hJ4bF6wS0dA2eK9mX7cP3vN=';
-
-// DON'T: Commit to git
-// .gitignore must include .env files
-```
-
-### Key Exchange
-
-```
-Client and Server must use SAME encryption key
-
-Setup:
-1. Generate 32-byte key: openssl rand -base64 32
-2. Store in environment variable on server: ENCRYPTION_KEY
-3. Store same value on client (hardcode or env var)
-4. Both must use identical base64 string
-
-Verification:
-- If keys don't match: ERR_CONN_004 (Authentication failed)
-- Check server and client keys are byte-for-byte identical
-- Base64 encoding must not change (whitespace matters)
-```
-
-### Key Rotation (Security Best Practice)
-
-```javascript
-// Schedule key rotation every 90 days
-// 1. Generate new key
-// 2. Update environment variables
-// 3. Restart server and clients
-// 4. Old connections will reconnect with new key
-
-// During rotation:
-setInterval(() => {
-  const newKey = process.env.ENCRYPTION_KEY_NEW;
-  if (newKey && newKey !== currentKey) {
-    server.rotateEncryptionKey(newKey);
-    currentKey = newKey;
-  }
-}, 86400000);  // Every 24 hours
+[smartsocket] [debug] Sent message (125 bytes)
 ```
 
 ---
@@ -859,94 +616,255 @@ setInterval(() => {
 ### Supported Browsers
 
 ```
-Desktop:
-✅ Chrome 43+ (2015)
-✅ Firefox 48+ (2016)
-✅ Safari 10.1+ (2016)
-✅ Edge 14+ (2016)
-
-Mobile:
-✅ iOS Safari 10.1+
-✅ Android Chrome 43+
-✅ Android Firefox 48+
-✅ Samsung Internet 4+
-
-Node.js:
-✅ Node.js 12+
-✅ Node.js 14+
-✅ Node.js 16+
-✅ Node.js 18+
+Chrome 43+ (2015)
+Firefox 48+ (2016)
+Safari 10.1+ (2016)
+Edge 14+ (2016)
+iOS Safari 10.1+
+Android Chrome 43+
+Android Firefox 48+
+Samsung Internet 4+
 ```
 
-### Polyfills Needed
-
-```javascript
-// For older browsers, provide WebSocket polyfill
-<script src="websocket-polyfill.js"></script>
-
-// Check browser support
-if (!window.WebSocket) {
-  console.error('WebSocket not supported');
-}
-```
-
-### Feature Detection
+### Checking Browser Support
 
 ```javascript
 // Check WebSocket support
-const supportsWebSocket = typeof WebSocket !== 'undefined' ||
-                          typeof MozWebSocket !== 'undefined';
+if (typeof WebSocket === 'undefined') {
+  console.error('WebSocket not supported in this browser');
+}
 
 // Check binary support
-const supportsBinary = WebSocket.prototype.binaryType !== undefined;
+if (typeof ArrayBuffer === 'undefined') {
+  console.error('Binary WebSocket not supported');
+}
 
-// Check compression support
-const supportsCompression = 
-  'permessage-deflate' in WebSocket.prototype;
+// Conditional initialization
+if (typeof WebSocket !== 'undefined') {
+  const client = new SmartSocketClient('ws://localhost:3000');
+  await client.connect();
+} else {
+  console.error('Please upgrade your browser');
+}
 ```
 
-### CORS and Security
+### Using Polyfills
+
+```html
+<!-- For older browsers -->
+<script src="websocket-polyfill.js"></script>
+
+<!-- Then use SmartSocket -->
+<script src="SmartSocketClient.js"></script>
+```
+
+---
+
+## Performance Tuning
+
+### For Low Latency
 
 ```javascript
-// Server-side CORS configuration
 const server = new SmartSocket({
-  port: 3000,
-  allowedOrigins: [
-    'http://localhost:3000',
-    'https://myapp.com'
-  ]
+  compressionLevel: 1,           // Minimal compression
+  rateLimitMaxRequests: 10000,   // High limit
+  connectionTimeout: 5000        // Short timeout
+});
+```
+
+### For High Throughput
+
+```javascript
+const server = new SmartSocket({
+  compressionLevel: 9,           // Maximum compression
+  maxConnections: 50000,         // High connection limit
+  enableConnectionPooling: true
+});
+```
+
+### For Mobile Networks
+
+```javascript
+const client = new SmartSocketClient('ws://localhost:3000', {
+  reconnectDelay: 5000,          // Longer initial delay
+  maxReconnectAttempts: 20,      // More attempts
+  ackTimeout: 60000              // Longer timeout
+});
+```
+
+---
+
+## Security Best Practices
+
+### Always Encrypt in Production
+
+```javascript
+const server = new SmartSocket({
+  enableEncryption: true,
+  encryptionKey: process.env.ENCRYPTION_KEY
 });
 
-// Client-side headers (if needed)
-const client = new SmartSocketClient('ws://server:3000', {
-  headers: {
-    'Authorization': 'Bearer token'
+// Use WSS (WebSocket Secure) not WS
+const client = new SmartSocketClient('wss://your-domain.com:3000');
+```
+
+### Use HTTPS/WSS
+
+```javascript
+const https = require('https');
+const fs = require('fs');
+
+const options = {
+  key: fs.readFileSync('server.key'),
+  cert: fs.readFileSync('server.crt')
+};
+
+const httpsServer = https.createServer(options);
+const server = new SmartSocket({
+  port: 3000,
+  server: httpsServer
+});
+```
+
+### Validate Input
+
+```javascript
+server.on('message', (socket, data, ack) => {
+  // Always validate input
+  if (!data || typeof data !== 'object') {
+    ack({ error: 'Invalid data format' });
+    return;
+  }
+  
+  if (!data.text || typeof data.text !== 'string') {
+    ack({ error: 'Missing or invalid text field' });
+    return;
+  }
+  
+  // Process safe data
+  ack({ success: true });
+});
+```
+
+### Implement Authentication
+
+```javascript
+server.on('connected', (socket) => {
+  socket.requireAuth = true;
+});
+
+socket.on('auth', (credentials, ack) => {
+  if (verifyCredentials(credentials)) {
+    socket.data.authenticated = true;
+    socket.data.userId = credentials.userId;
+    ack({ success: true });
+  } else {
+    ack({ success: false, error: 'Invalid credentials' });
+    socket.disconnect();
+  }
+});
+
+server.use((socket, event, data, next) => {
+  if (!socket.data.authenticated) {
+    next(new Error('Not authenticated'));
+  } else {
+    next();
   }
 });
 ```
 
 ---
 
-## Implementation Checklist
+## Memory Usage
 
-When implementing SmartSocket in a new project:
+### Per-Connection Memory
 
-- [ ] Review Type Definitions for your language
-- [ ] Understand Binary Protocol format
-- [ ] Configure Reconnection timeouts appropriately
-- [ ] Use WSS (WebSocket Secure) in production
-- [ ] Handle all Error Codes gracefully
-- [ ] Implement Heartbeat monitoring
-- [ ] Handle Message Queue during disconnections
-- [ ] Monitor Memory Usage regularly
-- [ ] Configure appropriate Timeouts
-- [ ] Enable Debug Logging in development
-- [ ] Optimize Connection Pool settings
-- [ ] Implement Rate Limiting per use case
-- [ ] Choose Compression Level based on latency needs
-- [ ] Secure Encryption Keys properly
-- [ ] Test Browser Compatibility
+```
+Base socket object: ~1.5 KB
+Event listeners (avg 5): ~500 bytes
+User data storage: ~2-5 KB
+Buffers and state: ~1 KB
+
+Total per connection: ~5-7 KB (plus user data)
+```
+
+### Memory Monitoring
+
+```javascript
+// Monitor memory usage
+setInterval(() => {
+  const stats = server.getStats();
+  const memMB = parseFloat(stats.memoryUsage);
+  
+  console.log('Memory:', memMB + 'MB');
+  console.log('Connections:', stats.connections);
+  
+  if (memMB > 1000) {
+    console.warn('High memory usage detected');
+  }
+}, 60000);
+```
+
+### Reducing Memory
+
+```javascript
+// 1. Limit maxConnections
+const server = new SmartSocket({
+  maxConnections: 5000  // Don't accept more
+});
+
+// 2. Enable connection pooling
+const server = new SmartSocket({
+  enableConnectionPooling: true
+});
+
+// 3. Clean up event listeners
+client.off('event-name');
+
+// 4. Disconnect unused clients
+client.disconnect();
+```
 
 ---
 
-**Ready for production implementation!** 🚀
+## Implementation Checklist
+
+When implementing SmartSocket in your project:
+
+### Initial Setup
+- [ ] Install SmartSocket package (`npm install smartsocket`)
+- [ ] Review Configuration Options section
+- [ ] Choose appropriate compression level
+- [ ] Set up encryption keys (if needed)
+
+### Development
+- [ ] Enable Debug Logging for development
+- [ ] Test with multiple concurrent connections
+- [ ] Implement error handling for all error codes
+- [ ] Handle reconnection events
+- [ ] Test timeout scenarios
+
+### Security
+- [ ] Enable encryption with secure keys
+- [ ] Use WSS (WebSocket Secure) in production
+- [ ] Validate all input data
+- [ ] Implement authentication
+- [ ] Review Security Best Practices
+
+### Performance
+- [ ] Configure rate limiting
+- [ ] Tune compression level
+- [ ] Monitor memory usage
+- [ ] Set appropriate timeouts
+- [ ] Test browser compatibility
+
+### Production
+- [ ] Use environment variables for secrets
+- [ ] Enable rate limiting
+- [ ] Set up monitoring and alerts
+- [ ] Configure connection timeouts
+- [ ] Document configuration choices
+
+---
+
+**Ready to implement SmartSocket!** 🚀
