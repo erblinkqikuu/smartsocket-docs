@@ -19,6 +19,10 @@ Central repository for SmartSocket documentation, guides, and resources.
 - **[Technical Reference](./TECHNICAL_DETAILS.md)** - Complete API reference, configuration, error codes, troubleshooting
 
 ### Broadcasting Guides (If Broadcasting Not Working)
+- **[🔴 CRITICAL BUG FIXED!](./CRITICAL_BUG_FOUND.md)** - Bug found & fixed in Namespace.to()
+- **[✅ BROADCASTING FIX COMPLETE](./BROADCASTING_FIX_COMPLETE.md)** - Final summary of fix applied
+- **[⚡ APPLY THIS FIX NOW](./APPLY_THIS_FIX_NOW.md)** - For your quiz app code (if needed)
+- **[CORRECTED_QUIZ_SERVER.js](./CORRECTED_QUIZ_SERVER.js)** - Copy this working server code
 - **[Broadcasting Issue & Fix](./README_BROADCASTING_ISSUE.md)** - Diagnose and fix broadcasting problems
 - **[Wrong vs Correct Code](./WRONG_vs_CORRECT.md)** - Side-by-side examples of common mistakes
 - **[Broadcasting Fix Guide](./BROADCASTING_FIX_GUIDE.md)** - Detailed explanation of the issue
@@ -56,7 +60,10 @@ Central repository for SmartSocket documentation, guides, and resources.
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | Ready to deploy to production |
 | [SMARTSOCKET_FEATURES.md](./SMARTSOCKET_FEATURES.md) | Want to use advanced features |
 | [TECHNICAL_DETAILS.md](./TECHNICAL_DETAILS.md) | Need API reference or configuration help |
-| [README_BROADCASTING_ISSUE.md](./README_BROADCASTING_ISSUE.md) | Broadcasting not working, need quick fix |
+| [🔴 CRITICAL BUG FIXED](./CRITICAL_BUG_FOUND.md) | **SmartSocket library bug found & fixed** |
+| [✅ BROADCASTING FIX COMPLETE](./BROADCASTING_FIX_COMPLETE.md) | **Final fix summary** |
+| [⚡ APPLY THIS FIX NOW](./APPLY_THIS_FIX_NOW.md) | Need immediate 3-line fix for quiz app |
+| [CORRECTED_QUIZ_SERVER.js](./CORRECTED_QUIZ_SERVER.js) | Need corrected server code to copy |
 | [WRONG_vs_CORRECT.md](./WRONG_vs_CORRECT.md) | Want to see common broadcasting mistakes |
 | [QUIZ_SERVER_EXAMPLE.js](./QUIZ_SERVER_EXAMPLE.js) | Need complete working quiz server |
 | [QUIZ_CLIENT_GUIDE.md](./QUIZ_CLIENT_GUIDE.md) | Need to receive broadcasts on client |
