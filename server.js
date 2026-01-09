@@ -1,4 +1,4 @@
-import SmartSocket from './smartsocket/index.js';
+import SmartSocket from '/index.js';
 
 const server = new SmartSocket({
   port: 8080,
