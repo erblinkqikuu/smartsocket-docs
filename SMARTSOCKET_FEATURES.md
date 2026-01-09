@@ -11,14 +11,15 @@ Complete documentation for advanced features and patterns in SmartSocket.
 
 1. [Namespaces](#namespaces)
 2. [Acknowledgments](#acknowledgments)
-3. [Middleware System](#middleware-system)
-4. [Error Handling](#error-handling)
-5. [Connection Management](#connection-management)
-6. [Message Compression](#message-compression)
-7. [Encryption](#encryption)
-8. [Rate Limiting](#rate-limiting)
-9. [Connection Pooling](#connection-pooling)
-10. [Real-World Examples](#real-world-examples)
+3. [Broadcasting](#broadcasting)
+4. [Middleware System](#middleware-system)
+5. [Error Handling](#error-handling)
+6. [Connection Management](#connection-management)
+7. [Message Compression](#message-compression)
+8. [Encryption](#encryption)
+9. [Rate Limiting](#rate-limiting)
+10. [Connection Pooling](#connection-pooling)
+11. [Real-World Examples](#real-world-examples)
 
 ---
 
@@ -110,7 +111,180 @@ gameClient.emit('move', { x: 100, y: 200 });
 
 ---
 
-## Acknowledgments
+## Broadcasting
+
+Send messages to multiple clients simultaneously.
+
+### Server Broadcasting
+
+#### Broadcast to All Clients Globally
+
+```javascript
+const server = new SmartSocket({ port: 3000 });
+
+// Send to EVERY connected client across all namespaces
+server.emit('system-alert', {
+  message: 'Server maintenance in 5 minutes',
+  timestamp: Date.now()
+});
+```
+
+#### Broadcast to Specific Namespace
+
+```javascript
+const chatNS = server.namespace('/chat');
+
+// Send to ALL clients in /chat namespace only
+chatNS.emit('new-message', {
+  from: 'admin',
+  text: 'Welcome to chat!',
+  timestamp: Date.now()
+});
+
+// NOT sent to /game or /notifications namespaces
+```
+
+#### Send to Specific Socket
+
+```javascript
+// Send to ONE specific client by ID
+server.to(socketId).emit('private-notification', {
+  message: 'You won the game!'
+});
+```
+
+#### Broadcasting from Event Handler
+
+```javascript
+const quizNS = server.namespace('/quiz');
+
+// When someone starts the quiz
+quizNS.on('start-quiz', (socket, data, ack) => {
+  // Broadcast to ALL players in quiz namespace
+  quizNS.emit('quiz-started', {
+    title: data.title,
+    startTime: Date.now()
+  });
+  
+  ack({ success: true });
+});
+
+// When a new player joins
+quizNS.on('player-joined', (socket, data, ack) => {
+  // Broadcast to all EXCEPT sender
+  quizNS.emit('player-count-updated', {
+    totalPlayers: getTotalPlayers(),
+    newPlayer: data.username
+  });
+  
+  ack({ joined: true });
+});
+```
+
+### Use Cases for Broadcasting
+
+**Game Server**:
+```javascript
+const gameNS = server.namespace('/game');
+
+// Broadcast updated positions to all players
+gameNS.on('move', (socket, data) => {
+  gameNS.emit('player-moved', {
+    playerId: socket.id,
+    position: data.position
+  });
+});
+```
+
+**Chat Application**:
+```javascript
+const chatNS = server.namespace('/chat');
+
+// Broadcast new message to all users in room
+chatNS.on('send-message', (socket, data, ack) => {
+  chatNS.emit('new-message', {
+    from: socket.data.username,
+    text: data.text,
+    timestamp: Date.now()
+  });
+  
+  ack({ sent: true });
+});
+```
+
+**Real-Time Notifications**:
+```javascript
+const notifyNS = server.namespace('/notifications');
+
+// Broadcast notification to all connected users
+notifyNS.emit('system-notification', {
+  type: 'alert',
+  message: 'Important system message',
+  priority: 'high'
+});
+```
+
+**Live Dashboard**:
+```javascript
+const dashNS = server.namespace('/dashboard');
+
+// Broadcast metrics update to all dashboard viewers
+setInterval(() => {
+  const metrics = getSystemMetrics();
+  dashNS.emit('metrics-update', metrics);
+}, 5000);
+```
+
+### Client Receiving Broadcasts
+
+```javascript
+const client = new SmartSocketClient('ws://localhost:3000', {
+  namespace: '/quiz'
+});
+
+await client.connect();
+
+// Listen for broadcasts
+client.on('quiz-started', (data) => {
+  console.log('Quiz started:', data.title);
+  displayQuiz();
+});
+
+client.on('player-count-updated', (data) => {
+  console.log('Players:', data.totalPlayers);
+  updatePlayerCount(data.totalPlayers);
+});
+
+client.on('new-question', (data) => {
+  console.log('Question:', data.text);
+  displayQuestion(data);
+});
+```
+
+### Broadcasting with Conditions
+
+```javascript
+const quizNS = server.namespace('/quiz');
+
+quizNS.on('submit-answer', (socket, data, ack) => {
+  const player = socket.data;
+  
+  // Only broadcast to players in same quiz
+  const playersInQuiz = getPlayersInQuiz(player.quizId);
+  
+  playersInQuiz.forEach(p => {
+    if (p.socketId !== socket.id) {  // Don't send to self
+      server.to(p.socketId).emit('score-updated', {
+        leaderboard: getLeaderboard(player.quizId)
+      });
+    }
+  });
+  
+  ack({ received: true });
+});
+```
+
+---
 
 Implement request/response patterns with acknowledgment callbacks.
 
