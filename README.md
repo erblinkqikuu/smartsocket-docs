@@ -18,6 +18,13 @@ Central repository for SmartSocket documentation, guides, and resources.
 - **[Advanced Features](./SMARTSOCKET_FEATURES.md)** - Namespaces, middleware, encryption, rate limiting, real-world examples
 - **[Technical Reference](./TECHNICAL_DETAILS.md)** - Complete API reference, configuration, error codes, troubleshooting
 
+### Broadcasting Guides (If Broadcasting Not Working)
+- **[Broadcasting Issue & Fix](./README_BROADCASTING_ISSUE.md)** - Diagnose and fix broadcasting problems
+- **[Wrong vs Correct Code](./WRONG_vs_CORRECT.md)** - Side-by-side examples of common mistakes
+- **[Broadcasting Fix Guide](./BROADCASTING_FIX_GUIDE.md)** - Detailed explanation of the issue
+- **[Quiz Server Example](./QUIZ_SERVER_EXAMPLE.js)** - Complete working quiz server with broadcasting
+- **[Quiz Client Guide](./QUIZ_CLIENT_GUIDE.md)** - How to receive broadcasts on the client
+
 ---
 
 ## Related Repositories
@@ -49,6 +56,10 @@ Central repository for SmartSocket documentation, guides, and resources.
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | Ready to deploy to production |
 | [SMARTSOCKET_FEATURES.md](./SMARTSOCKET_FEATURES.md) | Want to use advanced features |
 | [TECHNICAL_DETAILS.md](./TECHNICAL_DETAILS.md) | Need API reference or configuration help |
+| [README_BROADCASTING_ISSUE.md](./README_BROADCASTING_ISSUE.md) | Broadcasting not working, need quick fix |
+| [WRONG_vs_CORRECT.md](./WRONG_vs_CORRECT.md) | Want to see common broadcasting mistakes |
+| [QUIZ_SERVER_EXAMPLE.js](./QUIZ_SERVER_EXAMPLE.js) | Need complete working quiz server |
+| [QUIZ_CLIENT_GUIDE.md](./QUIZ_CLIENT_GUIDE.md) | Need to receive broadcasts on client |
 | [Server README](https://github.com/erblinkqikuu/smartsocket) | Working on the server |
 | [Client README](https://github.com/erblinkqikuu/smartsocket-client) | Working on the client |
 
