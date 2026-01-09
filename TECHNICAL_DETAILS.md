@@ -382,6 +382,32 @@ const chatNS = server.namespace('/chat');
 // Game broadcasts won't affect chat players
 ```
 
+### ⚠️ COMMON MISTAKE: Forgetting to Broadcast
+
+**The #1 reason broadcasting appears to not work:**
+
+```javascript
+// ❌ WRONG - Server receives but doesn't broadcast
+quizNS.on('player-joined', (socket, data, ack) => {
+  ack({ success: true });  // Only sender gets this!
+  // Other players get NOTHING
+});
+
+// ✅ CORRECT - Server receives AND broadcasts
+quizNS.on('player-joined', (socket, data, ack) => {
+  socket.join(data.quizCode);  // Join room FIRST
+  quizNS.to(data.quizCode).emit('player-joined', data);  // Then broadcast
+  ack({ success: true });  // Then acknowledge sender
+});
+```
+
+**Key points:**
+- `ack()` only sends to the sender
+- `.emit()` broadcasts to all in namespace
+- `.to(room).emit()` broadcasts to specific room
+- `.to(socketId).emit()` sends to one socket
+- **Must call `socket.join(room)` BEFORE broadcasting to that room**
+
 ### Broadcast Latency Optimization
 
 ```javascript
