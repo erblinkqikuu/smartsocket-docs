@@ -16,6 +16,7 @@ Central repository for SmartSocket documentation, guides, and resources.
 ### Core Documentation
 - **[Deployment Guide](./DEPLOYMENT.md)** - Deploy to production (PM2, Docker, Cloud)
 - **[Advanced Features](./SMARTSOCKET_FEATURES.md)** - Namespaces, middleware, encryption, rate limiting, and more
+- **[Technical Details](./TECHNICAL_DETAILS.md)** - Deep technical documentation (binary protocol, algorithms, internals)
 
 ---
 
@@ -70,9 +71,10 @@ npm install smartsocket-client    # Client
 1. **Start here**: [00-START-HERE](./00-START-HERE.md) - 5 minute quick start
 2. **Deployment**: [DEPLOYMENT.md](./DEPLOYMENT.md) - Production setup
 3. **Features**: [SMARTSOCKET_FEATURES.md](./SMARTSOCKET_FEATURES.md) - Advanced capabilities
-4. **Server API**: [smartsocket/README.md](https://github.com/erblinkqikuu/smartsocket)
-5. **Client API**: [smartsocket-client/README.md](https://github.com/erblinkqikuu/smartsocket-client)
-6. **GitHub Issues**: [smartsocket issues](https://github.com/erblinkqikuu/smartsocket/issues)
+4. **Technical Details**: [TECHNICAL_DETAILS.md](./TECHNICAL_DETAILS.md) - Deep documentation for implementers
+5. **Server API**: [smartsocket/README.md](https://github.com/erblinkqikuu/smartsocket)
+6. **Client API**: [smartsocket-client/README.md](https://github.com/erblinkqikuu/smartsocket-client)
+7. **GitHub Issues**: [smartsocket issues](https://github.com/erblinkqikuu/smartsocket/issues)
 
 ---
 
@@ -95,6 +97,7 @@ smartsocket-docs/             # This repository
 ├── 00-START-HERE.md           # Quick start (5-minute setup)
 ├── DEPLOYMENT.md              # Deployment guide
 ├── SMARTSOCKET_FEATURES.md    # Advanced features
+├── TECHNICAL_DETAILS.md       # Deep technical documentation
 ├── LICENSE                    # License (no selling/sublicensing)
 └── NOTICE.md                  # Third-party credits (ws library)
 
@@ -109,7 +112,8 @@ Related Repositories:
 
 ✅ Quick start guide  
 ✅ Deployment guides  
-✅ Advanced features documentation  
+✅ Advanced technical implementation details
+✅ Complete features documentation  
 ✅ Complete LICENSE (no selling/sublicensing)  
 ✅ Third-party credits and notices  
 
