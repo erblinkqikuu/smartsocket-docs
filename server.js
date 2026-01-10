@@ -44,7 +44,14 @@ console.log(`
 // QUIZ NAMESPACE
 // ============================================
 
-const quizNS = server.namespace('/quiz');
+// GUARD: Only create namespace once per server instance
+let quizNS;
+if (!server._quizNamespaceInitialized) {
+  quizNS = server.namespace('/quiz');
+  server._quizNamespaceInitialized = true;
+} else {
+  quizNS = server.namespaceManager.namespaces.get('/quiz');
+}
 
 // ============================================
 // 1. ROOM MANAGEMENT - Add socket to room when joining
