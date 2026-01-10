@@ -12,7 +12,7 @@
  * - Fixed startup logging
  */
 
-import SmartSocket from './index.js';
+import SmartSocket from '../smartsocket/index.js';
 
 // ============================================
 // SERVER CONFIGURATION
@@ -270,15 +270,9 @@ server.on('error', (err) => {
 // START SERVER
 // ============================================
 
-// Only start server if this is the main entry point (not imported as module)
-if (import.meta.url === `file://${process.argv[1]}`) {
-  server.listen(() => {
-    console.log(`\n✅ SmartSocket listening on port 8080`);
-    console.log(`📡 Registered namespaces: /, /quiz\n`);
-  });
-} else {
-  // If imported as a module, just export without starting
-  console.log('[SmartSocket] Server exported as module (not starting)');
-}
+server.listen(() => {
+  console.log(`\n✅ SmartSocket listening on port 8080`);
+  console.log(`📡 Registered namespaces: /, /quiz\n`);
+});
 
 export default server;
