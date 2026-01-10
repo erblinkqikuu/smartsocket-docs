@@ -19,7 +19,6 @@ import SmartSocket from '../smartsocket/index.js';
 // ============================================
 
 const server = new SmartSocket({
-  port: 8080,
   enableNamespaces: true,
   secure: false // Set to true with SSL for production
 });
