@@ -1,28 +1,73 @@
+/**
+ * SmartSocket Quiz Server - Auto Broadcasting (FIXED)
+ * 
+ * This server automatically broadcasts all quiz events to all players
+ * in the same quiz room.
+ * 
+ * Features:
+ * - Auto-broadcast to room
+ * - Proper room management
+ * - Event logging
+ * - Error handling
+ * - Fixed startup logging
+ */
+
 import SmartSocket from './index.js';
+
+// ============================================
+// SERVER CONFIGURATION
+// ============================================
 
 const server = new SmartSocket({
   port: 8080,
   enableNamespaces: true,
-  secure: false, // Set to true with SSL cert/key for production
+  secure: false // Set to true with SSL for production
 });
 
-// Initialize quiz namespace
-const quizNS = server.namespace('/quiz');
+// ============================================
+// STARTUP BANNER (Print immediately)
+// ============================================
 
-/**
- * ROOM MANAGEMENT
- * When a client joins a quiz, add them to the room using socket.join()
- */
+console.log(`
+╔═══════════════════════════════════════════════╗
+║      SmartSocket - Quiz Auto-Broadcasting    ║
+╠═══════════════════════════════════════════════╣
+║ ✅ Server started                             ║
+║ 📍 Address: 0.0.0.0                          ║
+║ 🔌 Port: 8080                                ║
+║ 📡 Namespace: /quiz                           ║
+║ 🔄 Auto-broadcast: ENABLED                    ║
+║ 📊 Ready for simultaneous quizzes             ║
+╚═══════════════════════════════════════════════╝
+`);
+
+// ============================================
+// QUIZ NAMESPACE
+// ============================================
+
+const quizNS = server.namespace('/quiz');
+console.log(`[STARTUP] Created /quiz namespace`);
+console.log(`[STARTUP] Current server instance namespaces: ${Array.from(server.namespaceManager.namespaces.keys()).join(', ')}`);
+
+// ============================================
+// 1. ROOM MANAGEMENT - Add socket to room when joining
+// ============================================
+
 quizNS.on('join-quiz', (socket, data) => {
   const { quizCode, playerId, playerName } = data;
+  
+  if (!quizCode || !playerId) {
+    console.error('[ERROR] join-quiz missing quizCode or playerId');
+    return;
+  }
   
   // Add socket to quiz room
   socket.join(quizCode);
   
-  console.log(`[QUIZ] ${playerName} (${playerId}) joined quiz: ${quizCode}`);
-  console.log(`[QUIZ] Room "${quizCode}" now has ${socket.server.rooms.get(quizCode)?.size || 0} players`);
+  const roomSize = socket.server.rooms.get(quizCode)?.size || 0;
+  console.log(`[QUIZ] ${playerName} (${playerId}) joined: ${quizCode} [Room Size: ${roomSize}]`);
   
-  // Broadcast player joined to all in room
+  // Notify all in room that this player joined
   quizNS.to(quizCode).emit('player-joined', {
     quizCode,
     playerId,
@@ -31,131 +76,187 @@ quizNS.on('join-quiz', (socket, data) => {
   });
 });
 
-/**
- * AUTO-BROADCAST HANDLERS
- * Each event from a client is automatically broadcast to all clients in the same quiz room
- */
+// ============================================
+// 2. AUTO-BROADCAST HANDLERS
+// ============================================
+// Each of these handlers receives an event from a client
+// and automatically broadcasts it to all other clients in the same room
 
-// Player joined event
+/**
+ * Host joined event
+ * Data: { quizCode, hostId }
+ */
+quizNS.on('host-joined', (socket, data) => {
+  if (!data.quizCode) return;
+  const { quizCode, hostId } = data;
+  
+  // Add socket to quiz room
+  socket.join(quizCode);
+  
+  const roomSize = socket.server.rooms.get(quizCode)?.size || 0;
+  console.log(`[QUIZ] Host joined: ${quizCode} (${hostId}) [Room Size: ${roomSize}]`);
+  
+  // Broadcast to all in room
+  console.log(`[BROADCAST] host-joined → ${quizCode}`);
+  quizNS.to(quizCode).emit('host-joined', data);
+});
+
+/**
+ * Player joined event
+ * Data: { quizCode, playerId, playerName, timestamp }
+ */
 quizNS.on('player-joined', (socket, data) => {
-  const { quizCode } = data;
-  console.log(`[BROADCAST] player-joined in quiz: ${quizCode}`);
-  quizNS.to(quizCode).emit('player-joined', data);
-});
-
-// Quiz started
-quizNS.on('quiz-started', (socket, data) => {
-  const { quizCode } = data;
-  console.log(`[BROADCAST] quiz-started in quiz: ${quizCode}`);
-  quizNS.to(quizCode).emit('quiz-started', data);
-});
-
-// Timer started
-quizNS.on('timer-start', (socket, data) => {
-  const { quizCode } = data;
-  console.log(`[BROADCAST] timer-start in quiz: ${quizCode}`);
-  quizNS.to(quizCode).emit('timer-start', data);
-});
-
-// Next question
-quizNS.on('next-question', (socket, data) => {
-  const { quizCode } = data;
-  console.log(`[BROADCAST] next-question in quiz: ${quizCode}`);
-  quizNS.to(quizCode).emit('next-question', data);
-});
-
-// Player answered
-quizNS.on('player-answered', (socket, data) => {
-  const { quizCode } = data;
-  console.log(`[BROADCAST] player-answered in quiz: ${quizCode}`);
-  quizNS.to(quizCode).emit('player-answered', data);
-});
-
-// Skip question
-quizNS.on('skip-question', (socket, data) => {
-  const { quizCode } = data;
-  console.log(`[BROADCAST] skip-question in quiz: ${quizCode}`);
-  quizNS.to(quizCode).emit('skip-question', data);
-});
-
-// Show answer
-quizNS.on('show-answer', (socket, data) => {
-  const { quizCode } = data;
-  console.log(`[BROADCAST] show-answer in quiz: ${quizCode}`);
-  quizNS.to(quizCode).emit('show-answer', data);
-});
-
-// End quiz
-quizNS.on('end-quiz', (socket, data) => {
-  const { quizCode } = data;
-  console.log(`[BROADCAST] end-quiz in quiz: ${quizCode}`);
-  quizNS.to(quizCode).emit('end-quiz', data);
-});
-
-// Show results
-quizNS.on('show-results', (socket, data) => {
-  const { quizCode } = data;
-  console.log(`[BROADCAST] show-results in quiz: ${quizCode}`);
-  quizNS.to(quizCode).emit('show-results', data);
+  if (!data.quizCode) return;
+  console.log(`[BROADCAST] player-joined → ${data.quizCode}`);
+  quizNS.to(data.quizCode).emit('player-joined', data);
 });
 
 /**
- * DATA REQUESTS (responds to requester only, not broadcast)
+ * Quiz started event
+ * Data: { quizCode, questions, projectMode }
  */
+quizNS.on('quiz-started', (socket, data) => {
+  if (!data.quizCode) return;
+  console.log(`[BROADCAST] quiz-started → ${data.quizCode}`);
+  quizNS.to(data.quizCode).emit('quiz-started', data);
+});
 
-// Get players in room
+/**
+ * Timer started event
+ * Data: { quizCode, duration }
+ */
+quizNS.on('timer-start', (socket, data) => {
+  if (!data.quizCode) return;
+  console.log(`[BROADCAST] timer-start → ${data.quizCode}`);
+  quizNS.to(data.quizCode).emit('timer-start', data);
+});
+
+/**
+ * Next question event
+ * Data: { quizCode, questionIndex }
+ */
+quizNS.on('next-question', (socket, data) => {
+  if (!data.quizCode) return;
+  console.log(`[BROADCAST] next-question → ${data.quizCode}`);
+  quizNS.to(data.quizCode).emit('next-question', data);
+});
+
+/**
+ * Player answered event
+ * Data: { quizCode, playerId, answerIndex }
+ */
+quizNS.on('player-answered', (socket, data) => {
+  if (!data.quizCode) return;
+  console.log(`[BROADCAST] player-answered → ${data.quizCode}`);
+  quizNS.to(data.quizCode).emit('player-answered', data);
+});
+
+/**
+ * Skip question event
+ * Data: { quizCode, questionIndex }
+ */
+quizNS.on('skip-question', (socket, data) => {
+  if (!data.quizCode) return;
+  console.log(`[BROADCAST] skip-question → ${data.quizCode}`);
+  quizNS.to(data.quizCode).emit('skip-question', data);
+});
+
+/**
+ * Show answer event
+ * Data: { quizCode, questionIndex }
+ */
+quizNS.on('show-answer', (socket, data) => {
+  if (!data.quizCode) return;
+  console.log(`[BROADCAST] show-answer → ${data.quizCode}`);
+  quizNS.to(data.quizCode).emit('show-answer', data);
+});
+
+/**
+ * End quiz event
+ * Data: { quizCode }
+ */
+quizNS.on('end-quiz', (socket, data) => {
+  if (!data.quizCode) return;
+  console.log(`[BROADCAST] end-quiz → ${data.quizCode}`);
+  quizNS.to(data.quizCode).emit('end-quiz', data);
+});
+
+/**
+ * Show results event
+ * Data: { quizCode, results }
+ */
+quizNS.on('show-results', (socket, data) => {
+  if (!data.quizCode) return;
+  console.log(`[BROADCAST] show-results → ${data.quizCode}`);
+  quizNS.to(data.quizCode).emit('show-results', data);
+});
+
+/**
+ * Player presence event
+ * Data: { quizCode, playerId, playerName }
+ */
+quizNS.on('player-present', (socket, data) => {
+  if (!data.quizCode) return;
+  console.log(`[BROADCAST] player-present → ${data.quizCode}`);
+  quizNS.to(data.quizCode).emit('player-present', data);
+});
+
+// ============================================
+// 3. DATA REQUESTS (respond to single socket)
+// ============================================
+
+/**
+ * Get players request - send back to requester only
+ */
 quizNS.on('get-players', (socket, data) => {
-  const { quizCode } = data;
-  const room = socket.server.rooms.get(quizCode);
+  if (!data.quizCode) return;
+  const room = socket.server.rooms.get(data.quizCode);
   const playerCount = room ? room.size : 0;
   
-  console.log(`[DATA] Sent player count (${playerCount}) for quiz ${quizCode} to requestor`);
+  console.log(`[DATA] players-list for ${data.quizCode}: ${playerCount} players`);
   
-  // Send back to this socket only
   socket.emit('players-list', {
-    quizCode,
+    quizCode: data.quizCode,
     count: playerCount
   });
 });
 
-// Player presence (send to all in room)
-quizNS.on('player-present', (socket, data) => {
-  const { quizCode } = data;
-  console.log(`[BROADCAST] player-present in quiz: ${quizCode}`);
-  quizNS.to(quizCode).emit('player-present', data);
-});
+// ============================================
+// 4. SERVER EVENTS
+// ============================================
 
-/**
- * SERVER INITIALIZATION
- */
 server.on('connect', (socket) => {
-  console.log(`[CONNECTION] Socket connected: ${socket.id}`);
+  console.log(`[CONNECT] Socket: ${socket.id}`);
   console.log(`[STATS] Total connections: ${server.sockets.size}`);
 });
 
 server.on('disconnect', (socket) => {
-  console.log(`[DISCONNECT] Socket disconnected: ${socket.id}`);
+  console.log(`[DISCONNECT] Socket: ${socket.id}`);
   
-  // Leave all quiz rooms
+  // Clean up - leave all rooms
   if (socket.rooms && socket.rooms.size > 0) {
     socket.rooms.forEach(room => {
       socket.leave(room);
-      console.log(`[QUIT] Socket left room: ${room}`);
+      const roomSize = socket.server.rooms.get(room)?.size || 0;
+      console.log(`[QUIT] Left room [${room}] - Room size: ${roomSize}`);
     });
   }
   
   console.log(`[STATS] Total connections: ${server.sockets.size}`);
 });
 
-server.on('listen', (address, port) => {
-  console.log(`\n╔════════════════════════════════════════╗`);
-  console.log(`║   SmartSocket Server - Quiz Relay      ║`);
-  console.log(`╠════════════════════════════════════════╣`);
-  console.log(`║ 🟢 Server running on port ${port}       ║`);
-  console.log(`║ 📍 Address: ${address || 'localhost'}           ║`);
-  console.log(`║ 📡 Namespace: /quiz                    ║`);
-  console.log(`║ ✅ Auto-broadcast enabled              ║`);
-  console.log(`╚════════════════════════════════════════╝\n`);
+server.on('error', (err) => {
+  console.error('[ERROR]', err.message);
+  console.error('[STACK]', err.stack);
+});
+
+// ============================================
+// START SERVER
+// ============================================
+
+server.listen(() => {
+  console.log(`\n✅ SmartSocket listening on port 8080`);
+  console.log(`📡 Registered namespaces: /, /quiz\n`);
 });
 
 export default server;
