@@ -12,7 +12,7 @@
  * - Fixed startup logging
  */
 
-import SmartSocket from './index.js';
+import SmartSocket from '../smartsocket/index.js';
 
 // ============================================
 // SERVER CONFIGURATION
@@ -46,8 +46,6 @@ console.log(`
 // ============================================
 
 const quizNS = server.namespace('/quiz');
-console.log(`[STARTUP] Created /quiz namespace`);
-console.log(`[STARTUP] Current server instance namespaces: ${Array.from(server.namespaceManager.namespaces.keys()).join(', ')}`);
 
 // ============================================
 // 1. ROOM MANAGEMENT - Add socket to room when joining
