@@ -44,12 +44,24 @@ console.log(`
 // QUIZ NAMESPACE
 // ============================================
 
+console.log('[DEBUG] Creating quiz namespace...');
+console.log(`[DEBUG] server exists: ${!!server}`);
+console.log(`[DEBUG] server.namespace exists: ${typeof server.namespace}`);
+
 // GUARD: Only create namespace once per server instance
 let quizNS;
 if (!server._quizNamespaceInitialized) {
-  quizNS = server.namespace('/quiz');
-  server._quizNamespaceInitialized = true;
+  console.log('[DEBUG] Initializing /quiz namespace...');
+  try {
+    quizNS = server.namespace('/quiz');
+    server._quizNamespaceInitialized = true;
+    console.log('[DEBUG] ✅ /quiz namespace created');
+  } catch (err) {
+    console.error('[DEBUG] ❌ Error creating namespace:', err.message);
+    quizNS = null;
+  }
 } else {
+  console.log('[DEBUG] Using existing /quiz namespace');
   quizNS = server.namespaceManager.namespaces.get('/quiz');
 }
 
